@@ -1,0 +1,49 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+
+# Virtual environments
+.env
+.venv/
+venv/
+ENV/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Logs
+*.log
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Python build / packaging
+build/
+dist/
+*.egg-info/
+
+# Cache
+*.cache
+*.pytest_cache/
+.mypy_cache/
+
+# Data files (optional: ignore if they are large or private)
+*.csv
+*.tsv
+*.parquet
+*.json
+*.pickle
+
+# Model checkpoints (optional: ignore if they are large)
+*.ckpt
+*.pth
+*.pt
+*.bin
+*.h5
