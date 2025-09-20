@@ -153,52 +153,77 @@ Examples:
 
 ### Long Short-Term Memory (LSTM)
 
+![LSTM Structure](images/lstm.png)
+
 #### 1. Forward Pass  
 At each time step `t`, the LSTM takes the current input `x_t`, the previous short-term memory (hidden state) `h_{t-1}`, and the previous long-term memory (cell state) `C_{t-1}`.
 
-![LSTM Structure](images/lstm.png)
-
-**(a) Forget Gate – Blue (% Long-Term To Remember)**  
-`f_t = σ(W_f · [h_{t-1}, x_t] + b_f)`  
+**(a) Forget Gate `f_t` – Blue (% Long-Term To Remember)**  
+`f_t = σ(W_fh * h_{t-1} + W_fx * x_t + b_f)`  
 
 - Decides how much of the old long-term memory to keep  
 - `σ` → sigmoid function, outputs between (0,1)  
 - If `f_t ≈ 1` → keep most of `C_{t-1}`  
 - If `f_t ≈ 0` → forget most of `C_{t-1}`  
 
-**(b) Input Gate + Candidate Memory – Green + Yellow**  
-`i_t = σ(W_i · [h_{t-1}, x_t] + b_i)`  
-`\tilde{C}_t = tanh(W_C · [h_{t-1}, x_t] + b_C)`  
+- `x_t` → current input at time step t  
+- `h_{t-1}` → previous short-term memory (hidden state)  
+- `C_{t-1}` → previous long-term memory (cell state)  
+- `f_t` → forget gate output (blue), decides how much of the old memory to keep
 
-- Input Gate (green) controls **how much new info enters**  
-- Candidate Memory (yellow, via tanh) generates potential new content  
+**(b) Input Gate `i_t` + Candidate Memory `C_t_candidate` – Green + Yellow**  
+`i_t = σ(W_ih * h_{t-1} + W_ix * x_t + b_i)`  
+`C_t_candidate = tanh(W_Ch * h_{t-1} + W_Cx * x_t + b_C)`  
 
-**(c) Cell State Update – Combination**  
-`C_t = f_t * C_{t-1} + i_t * \tilde{C}_t`  
+- Input Gate (green) controls **how much new information enters**  
+- Candidate Memory (yellow, via tanh) generates potential new content that could be added to the long-term memory  
+- The product `i_t * C_t_candidate` determines **how much of this new content is actually written into** the long-term memory  
+- If `i_t ≈ 1` → almost all of the candidate memory is written into `C_t`  
+- If `i_t ≈ 0` → almost none of the candidate memory is written into `C_t`  
 
-- Combines “forgotten old” and “added new” information  
-- Result is the **new long-term memory**  
+- `i_t` → input gate output (green), proportion of new info to be added  
+- `C_t_candidate` → candidate memory (yellow), proposed new content generated from input and previous STM  
 
-**(d) Output Gate – Purple (% Potential Memory To Remember)**  
-`o_t = σ(W_o · [h_{t-1}, x_t] + b_o)`  
+**(c) Cell State Update `C_t` – Combination (Yellow + Green + Blue)**  
+`C_t = f_t * C_{t-1} + i_t * C_t_candidate`  
+
+- Combines **forgotten old memory** (blue, controlled by `f_t`) and **new candidate memory** (green + yellow, controlled by `i_t`)  
+- This produces the updated **long-term memory** `C_t`  
+
+- If `f_t` is high and `i_t` is low → mostly keep old memory, little new info added  
+- If `f_t` is low and `i_t` is high → mostly forget old memory, replace with new info  
+- If both `f_t` and `i_t` are high → keep old memory and add new info → memory grows richer  
+- If both are low → forget old memory and add little new info → memory shrinks  
+
+- `C_t` → new long-term memory (cell state)  
+- `f_t * C_{t-1}` → retained portion of old memory  
+- `i_t * C_t_candidate` → newly added memory content  
+
+**(d) Output Gate `o_t` and New Short-Term Memory `h_t` – Purple + Pink**  
+`o_t = σ(W_oh * h_{t-1} + W_ox * x_t + b_o)`  
 `h_t = o_t * tanh(C_t)`  
 
-- Decides what part of the updated long-term memory is exposed as short-term memory  
-- Final outputs of this step:  
-  - `C_t` → new long-term memory  
-  - `h_t` → new short-term memory / hidden state  
+- Output Gate (purple) decides **how much of the updated long-term memory is revealed** as short-term memory  
+- The product `o_t * tanh(C_t)` becomes the new short-term memory `h_t` (pink)  
+- If `o_t ≈ 1` → almost all of the processed long-term memory is passed out as `h_t`  
+- If `o_t ≈ 0` → very little is passed out, `h_t` stays close to 0  
+
+- `o_t` → output gate output (purple), controls how much of the memory is revealed  
+- `h_t` → new short-term memory / hidden state (pink), final output at step t  
 
 #### 2. Loss Function (Sequence Example with MSE)  
 For a sequence of length T, with targets `y*_t`:  
 
-`Loss = Σ (0.5 * (y_t - y*_t)^2)` for `t = 1...T`
+`Loss = Σ ( 0.5 * (y_t - y*_t)^2 )` for `t = 1...T`
 
 #### 3. Backward Pass (Backpropagation Through Time with Gates)  
-- Compute gradients through each gate:  
-  - `δf_t, δi_t, δo_t, δ\tilde{C}_t` from chain rule  
-- Update parameters:  
+- Compute gradients through each gate (chain rule):  
+  - `δf_t, δi_t, δo_t, δC_t_candidate`  
+- Update parameter gradients:  
   - `∇W_f, ∇W_i, ∇W_o, ∇W_C`  
   - `∇b_f, ∇b_i, ∇b_o, ∇b_C`  
+
+> Note: The prediction layer is often `y_t = W_y * h_t + c`, and its gradients must also be backpropagated into `h_t` and the gates.
 
 #### 4. Gradient Descent Updates  
 Each parameter θ is updated as:  
@@ -221,11 +246,11 @@ Suppose:
 
 **Step**  
 - Forget Gate: `f_t ≈ 0.997` → keep ~99.7% of `C_{t-1}`  
-- Input Gate + Candidate: add controlled new info via `i_t * \tilde{C}_t`  
-- Cell State: `C_t = f_t * 2 + i_t * \tilde{C}_t` ≈ 1.99 + extra new info  
+- Input Gate + Candidate: add controlled new info via `i_t * C_t_candidate`  
+- Cell State: `C_t = f_t * 2 + i_t * C_t_candidate` ≈ 1.99 + extra new info  
 - Output Gate: `h_t = o_t * tanh(C_t)` → produces new short-term memory  
 
-👉 Result: LSTM preserves old memory (because Forget Gate is high) but also integrates new input.  
+👉 Result: LSTM preserves old memory (because Forget Gate is high) but also integrates new input.
 
 #### LSTM Parameters Cheat Sheet  
 
