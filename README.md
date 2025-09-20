@@ -254,6 +254,15 @@ Suppose:
 
 #### LSTM Parameters Cheat Sheet  
 
+### Effect of Previous STM and LTM on New LTM and STM
+
+| Case | Previous STM (`h_{t-1}`) | Previous LTM (`C_{t-1}`) | Effect on Gates | New LTM (`C_t`) | New STM (`h_t`) |
+|------|--------------------------|--------------------------|-----------------|-----------------|-----------------|
+| ① Strong STM, Strong LTM | Large | Large | Forget Gate `f_t` ↑, Input Gate `i_t` ↑, Output Gate `o_t` ↑ | Old memory largely kept + new info added → `C_t` big | Output Gate wide open + big `C_t` → `h_t` big |
+| ② Strong STM, Weak LTM | Large | Small | Forget Gate `f_t` ↑, Input Gate `i_t` ↑ | New info written in strongly → `C_t` grows | Output Gate wide open but `C_t` small → `h_t` moderate |
+| ③ Weak STM, Strong LTM | Small | Large | Forget Gate `f_t` ↓, Input Gate `i_t` ↓, Output Gate `o_t` ↓ | Old memory partially forgotten, little new info added → `C_t` shrinks | Output Gate more closed → `h_t` small |
+| ④ Weak STM, Weak LTM | Small | Small | Gates less active overall | Very little old memory kept, little new info added → `C_t` remains small | `o_t` small and `C_t` small → `h_t` very small |
+
 | Parameter | Controls | ↑ Increase | ↓ Decrease |
 |-----------|----------|------------|------------|
 | **W_f** (forget weights, blue) | How much old memory to keep | Less forgetting | More forgetting |
