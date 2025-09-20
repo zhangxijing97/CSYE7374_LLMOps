@@ -250,11 +250,9 @@ Suppose:
 - Cell State: `C_t = f_t * 2 + i_t * C_t_candidate` ≈ 1.99 + extra new info  
 - Output Gate: `h_t = o_t * tanh(C_t)` → produces new short-term memory  
 
-👉 Result: LSTM preserves old memory (because Forget Gate is high) but also integrates new input.
+👉 Result: LSTM preserves old memory (because Forget Gate is high) but also integrates new input. 
 
-#### LSTM Parameters Cheat Sheet  
-
-### Effect of Previous STM and LTM on New LTM and STM
+#### Effect of Previous STM and LTM on New LTM and STM
 
 | Case | Previous STM (`h_{t-1}`) | Previous LTM (`C_{t-1}`) | Effect on Gates | New LTM (`C_t`) | New STM (`h_t`) |
 |------|--------------------------|--------------------------|-----------------|-----------------|-----------------|
@@ -262,6 +260,8 @@ Suppose:
 | ② Strong STM, Weak LTM | Large | Small | Forget Gate `f_t` ↑, Input Gate `i_t` ↑ | New info written in strongly → `C_t` grows | Output Gate wide open but `C_t` small → `h_t` moderate |
 | ③ Weak STM, Strong LTM | Small | Large | Forget Gate `f_t` ↓, Input Gate `i_t` ↓, Output Gate `o_t` ↓ | Old memory partially forgotten, little new info added → `C_t` shrinks | Output Gate more closed → `h_t` small |
 | ④ Weak STM, Weak LTM | Small | Small | Gates less active overall | Very little old memory kept, little new info added → `C_t` remains small | `o_t` small and `C_t` small → `h_t` very small |
+
+#### LSTM Parameters Cheat Sheet  
 
 | Parameter | Controls | ↑ Increase | ↓ Decrease |
 |-----------|----------|------------|------------|
