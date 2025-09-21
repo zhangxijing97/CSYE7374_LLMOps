@@ -307,7 +307,8 @@ The model outputs class logits `z = [z_1, ..., z_K]`, then applies softmax to ge
 **(c) Batch / sequence aggregation**  
 `CE_batch = (1/N) * Σ_n [ -log( p^{(n)}_{ y^{(n)} } ) ]`  
 
-- `p^{(n)}_{y^{(n)}}` is `p^{(n)}`, take the `y^{(n)}`-th component
+- `p^{(n)}_{y^{(n)}}` is `p^{(n)}`, take the `y^{(n)}`-th component (the probability assigned to the true class).  
+  Example: `p^(1) = [0.70, 0.20, 0.10], y^(1) = 1  →  y^(1)-th component = the 1st element = 0.70 = p^(1)_{y^(1)}`
 
 #### ✅ Simple example (3 classes)
 
@@ -317,3 +318,44 @@ Logits: `[2.0, 0.5, -1.0]`
 
 - If `y = 1`: `CE = -log(0.786) ≈ 0.241`  
 - If `y = 2`: `CE = -log(0.175) ≈ 1.742`  
+
+### Focal Loss (softmax multi-class)
+
+**(a) Per-sample focal loss (true class `y`)**  
+`FL = - α_y * (1 - p_y)^γ * log(p_y)`
+
+- `p_y` → softmax probability assigned to the true class  
+- `γ >= 0` → focusing parameter (larger γ down-weights easy samples more)  
+- `α_y` → class weight for imbalance (larger for rare classes)  
+- Special case: if `γ = 0` and `α_y = 1`, then `FL = CE`
+- Effect of changing `γ` and `α_y`:  
+  - Increase `γ` → `FL` decreases for all samples, **much more for easy ones** (`p_y` near 1) → training **focus shifts to hard samples**.  
+  - Decrease `γ` → closer to CE; easy samples get **more** relative weight.  
+  - Increase `α_y` → **linearly increases** the loss for class `y` (useful to boost rare classes).  
+  - Decrease `α_y` → reduces the loss contribution for class `y`.  
+  - Note: overly large `γ` can underfit (loss becomes too small overall); tune on a validation set.
+
+**(b) Batch / sequence aggregation**  
+`FL_batch = (1/N) * Σ_n [ - α_{y^(n)} * (1 - p^{(n)}_{y^(n)})^γ * log( p^{(n)}_{ y^{(n)} } ) ]`
+
+- `p^{(n)}_{y^{(n)}}` is `p^{(n)}`, take the `y^{(n)}`-th component (the probability of the true class).  
+  Example: `p^(1) = [0.70, 0.20, 0.10], y^(1) = 1  →  y^(1)-th component = the 1st element = 0.70 = p^(1)_{y^(1)}`
+
+#### ✅ Simple examples
+
+**Easy sample** (very confident correct):  
+`p_y = 0.99, γ = 2, α_y = 1`  
+`FL = - 1 * (1 - 0.99)^2 * log(0.99) ≈ (0.01)^2 * 0.010 ≈ 0.000001`  (almost zero)
+
+**Hard sample** (uncertain/wrong-leaning):  
+`p_y = 0.30, γ = 2, α_y = 1`  
+`FL = - 1 * (1 - 0.30)^2 * log(0.30) ≈ 0.49 * 1.204 ≈ 0.590`
+
+**3-class example (reusing earlier logits)**  
+Logits: `[2.0, 0.5, -1.0]` → softmax `p ≈ [0.786, 0.175, 0.039]`  
+
+- If `y = 2` (true class prob `p_y = 0.175`), `γ = 2`, `α_y = 1`:  
+  `FL = - 1 * (1 - 0.175)^2 * log(0.175) ≈ 0.825^2 * 1.742 ≈ 0.6806 * 1.742 ≈ 1.185`
+
+- If `y = 1` (true class prob `p_y = 0.786`), `γ = 2`, `α_y = 1`:  
+  `FL = - 1 * (1 - 0.786)^2 * log(0.786) ≈ 0.214^2 * 0.241 ≈ 0.0458 * 0.241 ≈ 0.0110`
