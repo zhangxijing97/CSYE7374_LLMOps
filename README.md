@@ -214,6 +214,8 @@ At each time step `t`, the LSTM takes the current input `x_t`, the previous shor
 #### 2. Loss Function (Sequence Example with MSE)  
 For a sequence of length T, with targets `y*_t`:  
 
+`y_t = W_y * h_t + c`  
+
 `Loss = Σ ( 0.5 * (y_t - y*_t)^2 )` for `t = 1...T`
 
 #### 3. Backward Pass (Backpropagation Through Time with Gates)  
@@ -222,8 +224,11 @@ For a sequence of length T, with targets `y*_t`:
 - Update parameter gradients:  
   - `∇W_f, ∇W_i, ∇W_o, ∇W_C`  
   - `∇b_f, ∇b_i, ∇b_o, ∇b_C`  
+- Update output layer gradients:  
+  - `∇W_y, ∇c`  
 
-> Note: The prediction layer is often `y_t = W_y * h_t + c`, and its gradients must also be backpropagated into `h_t` and the gates.
+> Note: The prediction layer `y_t = W_y * h_t + c` is outside the LSTM core.  
+> Its gradients flow back into `h_t`, and then further into the gates and cell state.
 
 #### 4. Gradient Descent Updates  
 Each parameter θ is updated as:  
@@ -235,7 +240,8 @@ Examples:
 - `W_i = W_i - α * ∇W_i`  
 - `W_C = W_C - α * ∇W_C`  
 - `W_o = W_o - α * ∇W_o`  
-- Biases updated similarly: `b_f, b_i, b_C, b_o`  
+- `W_y = W_y - α * ∇W_y`  
+- Biases updated similarly: `b_f, b_i, b_C, b_o, c`  
 
 #### ✅ Example (Tiny Walkthrough)  
 Suppose:  
@@ -270,3 +276,44 @@ Suppose:
 | **W_C** (candidate weights, yellow) | What the new memory looks like | Stronger candidate content | Weaker candidate content |
 | **W_o** (output weights, purple) | How much memory goes to output | Stronger hidden signal | Weaker hidden signal |
 | **b_f, b_i, b_C, b_o** | Bias shifts each gate | Easier/harder to activate gates | — |
+
+### Cross-Entropy (CE)
+
+#### 1. Setup (Softmax multi-class)
+The model outputs class logits `z = [z_1, ..., z_K]`, then applies softmax to get probabilities.
+
+**(a) Softmax probabilities `p_k`**  
+`p_k = exp(z_k) / Σ_j exp(z_j)`
+
+- Maps each `z_k` to `(0, 1)` and ensures `Σ_k p_k = 1`
+- `p_k` is the predicted probability of class `k`
+
+- `z_k` → unnormalized score (logit) for class `k`  
+- `p_k` → softmax probability for class `k`  
+- `K`   → number of classes
+
+**(b) Cross-Entropy loss `CE` (true class `y`)**  
+`CE = -log(p_y)`
+
+- Uses only the probability of the **true class**  
+- If `p_y ≈ 1` → `CE` small (confident & correct)  
+- If `p_y ≈ 0` → `CE` large (wrong or uncertain)  
+- `log` is the natural logarithm
+
+- `y`   → index of the true class  
+- `p_y` → softmax probability assigned to the true class  
+- `CE`  → loss for the current sample
+
+**(c) Batch / sequence aggregation**  
+`CE_batch = (1/N) * Σ_n [ -log( p^{(n)}_{ y^{(n)} } ) ]`  
+
+- `p^{(n)}_{y^{(n)}}` is `p^{(n)}`, take the `y^{(n)}`-th component
+
+#### ✅ Simple example (3 classes)
+
+Logits: `[2.0, 0.5, -1.0]`  
+- `exp = [7.389, 1.649, 0.368]`, `sum = 9.406`  
+- `p = [0.786, 0.175, 0.039]`
+
+- If `y = 1`: `CE = -log(0.786) ≈ 0.241`  
+- If `y = 2`: `CE = -log(0.175) ≈ 1.742`  
