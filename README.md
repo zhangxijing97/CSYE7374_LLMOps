@@ -323,6 +323,7 @@ Logits: `[2.0, 0.5, -1.0]`
 
 **Per-sample focal loss (true class `y`)**  
 `FL = - α_y * (1 - p_y)^γ * log(p_y)`
+`CE = -log(p_y)`
 
 - `p_y` → softmax probability assigned to the true class  
 - `γ >= 0` → focusing parameter (larger γ down-weights easy samples more)  
@@ -352,3 +353,39 @@ Logits: `[2.0, 0.5, -1.0]` → softmax `p ≈ [0.786, 0.175, 0.039]`
 
 - If `y = 1` (true class prob `p_y = 0.786`), `γ = 2`, `α_y = 1`:  
   `FL = - 1 * (1 - 0.786)^2 * log(0.786) ≈ 0.214^2 * 0.241 ≈ 0.0458 * 0.241 ≈ 0.0110`
+
+### Weighted Cross-Entropy (softmax multi-class)
+
+**(a) Per-sample loss (true class `y`)**  
+`WCE = - w_y * log(p_y)`
+`CE = -log(p_y)`
+
+- `p_y` → softmax probability assigned to the true class  
+- `w_y` → class weight for the true class (larger for rarer / more important classes)  
+- Special case: if `w_y = 1` for all classes, `WCE = CE`  
+- Increase `w_y` → linearly increases the loss/gradient for class `y` → the model learns that class **more aggressively**  
+- Decrease `w_y` → reduces that class’s contribution
+
+**(b) Batch / sequence aggregation**  
+Two common reductions (pick one and be consistent):
+
+- Mean over samples:  
+  `WCE_batch = (1/N) * Σ_n [ - w_{y^(n)} * log( p^{(n)}_{ y^{(n)} } ) ]`
+
+- Normalize by sum of weights:  
+  `WCE_batch = ( Σ_n w_{y^(n)} * [ -log( p^{(n)}_{ y^{(n)} } ) ] ) / ( Σ_n w_{y^(n)} )`
+
+- `p^{(n)}_{y^{(n)}}` is `p^{(n)}`, take the `y^{(n)}`-th component (the probability of the true class).  
+  Example: `p^(1) = [0.70, 0.20, 0.10], y^(1) = 1  →  y^(1)-th component = the 1st element = 0.70 = p^(1)_{y^(1)}`
+
+**(c) Simple example**
+
+Let class weights be `w = [w_1=1.0, w_2=2.0, w_3=1.0]`.  
+Reuse logits: `[2.0, 0.5, -1.0]` → softmax `p ≈ [0.786, 0.175, 0.039]`.
+
+- If `y = 2` (true class is 2):  
+  `WCE = - w_2 * log(p_2) = - 2.0 * log(0.175) ≈ 2.0 * 1.742 ≈ 3.484`
+
+- If `y = 1` (true class is 1):  
+  `WCE = - w_1 * log(p_1) = - 1.0 * log(0.786) ≈ 0.241`
+
