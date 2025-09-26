@@ -391,94 +391,135 @@ Reuse logits: `[2.0, 0.5, -1.0]` → softmax `p ≈ [0.786, 0.175, 0.039]`.
 
 ### Reinforcement Learning
 
-#### 1. Q-learning – FrozenLake
-Update rule:  
+#### 1 Q-learning — FrozenLake
+
+**Update formula**
 `Q(s_t, a_t) ← Q(s_t, a_t) + α * ( r_t + γ * max_a' Q(s_{t+1}, a') - Q(s_t, a_t) )`
 
-- Learns the optimal value of each action independent of the current policy.  
-- Off-policy method.
+**What each term means**
+- `s_t` — current state
+- `a_t` — action taken in `s_t`
+- `r_t` — immediate reward after taking `a_t`
+- `s_{t+1}` — next state after the transition
+- `γ` — discount factor (0–1), how much we value future rewards
+- `α` — learning rate (0–1), how big each update step is
+- `Q(s,a)` — estimated action value
+- `max_a' Q(s_{t+1}, a')` — best (largest) estimated value available in the next state
 
-✅ Example (FrozenLake):  
-- State: on start tile  
-- Action: "Right"  
-- Reward: `r_t = 0` (normal step, not goal yet)  
-- Next state's best Q-value: `max Q(s’,·) = 5`  
-- Parameters: α = 0.5, γ = 0.9, current Q(s,Right)=0  
+**✅ Example (one step on FrozenLake)**
+Assume:
+- Current `Q(s,Right) = 0.00`
+- Immediate reward `r_t = 0`
+- Next state’s best value `max_a' Q(s', a') = 5.00`
+- `α = 0.5`, `γ = 0.9`
 
-Step-by-step:  
-`Q(s,Right) ← 0 + 0.5 * ( 0 + 0.9*5 - 0 )`  
-`Q(s,Right) = 2.25`  
+Derivation:
+- Target `= r_t + γ * max_a' Q(s', a') = 0 + 0.9 * 5.00 = 4.50`
+- TD error `= Target - Q(s,Right) = 4.50 - 0.00 = 4.50`
+- Update  
+  `Q(s,Right) ← Q(s,Right) + α * (Target - Q(s,Right))`  
+  `= 0.00 + 0.5 * 4.50 = 2.25`
 
-→ The agent increases its belief that going "Right" is promising because the future leads toward the goal.
+**Conclusion:** the value of going Right increases from `0.00 → 2.25` because the future looks promising.
 
-#### 2. SARSA – Cliff Walking
-Update rule:  
+#### 2 SARSA — Cliff Walking
+
+**Update formula (on-policy)**
 `Q(s_t, a_t) ← Q(s_t, a_t) + α * ( r_t + γ * Q(s_{t+1}, a_{t+1}) - Q(s_t, a_t) )`
 
-- On-policy: uses the actual action taken in the next state.  
-- Produces safer policies.
+**What each term means**
+- Same symbols as Q-learning, except we use **the actual next action** `a_{t+1}` (not the max over actions).
+- On-policy: we evaluate/improve the policy we’re actually following, which tends to be safer near cliffs.
 
-✅ Example (Cliff Walking):  
-- State: near cliff edge  
-- Action: "Right"  
-- Reward: `r_t = -1` (step penalty)  
-- Next action chosen: "Right" again, Q(s’,Right)=2  
-- Parameters: α=0.5, γ=0.9, current Q(s,Right)=0  
+**✅ Example (one step near the cliff)**
+Assume:
+- Current `Q(s,Right) = 0.00`
+- Immediate reward `r_t = -1` (step penalty)
+- Next chosen action is also Right with `Q(s',Right) = 2.00`
+- `α = 0.5`, `γ = 0.9`
 
-Step-by-step:  
-`Q(s,Right) ← 0 + 0.5 * ( -1 + 0.9*2 - 0 )`  
-`Q(s,Right) = 0.4`  
+Derivation:
+- Target `= r_t + γ * Q(s', a_{t+1}) = -1 + 0.9 * 2.00 = -1 + 1.80 = 0.80`
+- TD error `= Target - Q(s,Right) = 0.80 - 0.00 = 0.80`
+- Update  
+  `Q(s,Right) ← 0.00 + 0.5 * 0.80 = 0.40`
 
-→ The update is cautious, reflecting actual path risk instead of assuming the absolute best action.
+**Conclusion:** cautious increase to `0.40`, reflecting the policy’s **actual** next action (more conservative than Q-learning).
 
-#### 3. Policy Gradient – CartPole
-Update rule (REINFORCE):  
-`θ ← θ + α * ∇θ log πθ(a_t|s_t) * R_t`
+#### 3 Policy Gradient (REINFORCE) — CartPole
 
-- Directly adjusts policy probabilities toward actions that yield higher rewards.  
-- Works well with continuous states.
+**Update formula (increase probability of rewarding actions)**
+`θ ← θ + α * ∇_θ log π_θ(a_t | s_t) * R_t`
 
-✅ Example (CartPole):  
-- State: pole leaning slightly right  
-- Policy: πθ(Left)=0.5, πθ(Right)=0.5  
-- Action: "Right"  
-- Reward: balancing longer, `R_t = +10`  
-- α = 0.1  
+**What each term means**
+- `π_θ(a|s)` — policy: probability of choosing action `a` in state `s`, parameterized by `θ`
+- `log π_θ(a_t|s_t)` — log-probability of the taken action
+- `∇_θ` — gradient w.r.t. policy parameters
+- `R_t` — return (sum of discounted rewards from time `t` onward)
+- `α` — learning rate (step size)
+- Intuition: if `R_t` is high, increase the log-prob of the action you took; if low, decrease it.
 
-Step-by-step:  
-`θ ← θ + 0.1 * ∇θ log(0.5) * 10`  
+**✅ Example (two-action logistic policy, CartPole)**
+Let the policy be Bernoulli with parameter `θ`:
+- `π_θ(Right|s) = σ(θ) = 1 / (1 + e^{-θ})` and `π_θ(Left|s) = 1 - σ(θ)`
+- A known identity: `∇_θ log π_θ(Right|s) = 1 - σ(θ)`
 
-→ Increases probability of "Right". Next time, the agent is more likely to push right to keep balance.
+Assume:
+- Current `θ = 0.0` → `σ(0)=0.5` so `π(Right)=0.5`
+- Took action **Right**, got high return `R_t = +10` (kept pole balanced)
+- `α = 0.1`
 
-#### 4. Actor-Critic – MountainCar
-Update rules:  
-- Critic (value function):  
-  `V(s_t) ← V(s_t) + β * ( r_t + γ * V(s_{t+1}) - V(s_t) )`  
-- Actor (policy):  
-  `θ ← θ + α * ∇θ log πθ(a_t|s_t) * δ`  
+Derivation:
+- Gradient factor `∇_θ log π(Right|s) = 1 - σ(θ) = 1 - 0.5 = 0.5`
+- Update  
+  `θ ← θ + α * (0.5) * (10)`  
+  `= 0.0 + 0.1 * 5 = 0.5`
+- New probability of Right  
+  `π_new(Right) = σ(0.5) ≈ 0.622`
 
-where `δ` is the TD error.
+**Conclusion:** the policy becomes more likely to choose **Right** because it produced a high return.
 
-✅ Example (MountainCar):  
-- State: car stuck in valley  
-- Action: "Accelerate Left" (to build momentum)  
-- Reward: `r_t = 0` (no immediate success yet)  
-- Next state value: V(s’)=3.0, current V(s)=2.0  
-- γ=0.9, β=0.5  
+#### 4 Actor-Critic — MountainCar
 
-TD error:  
-`δ = r + γ*V(s’) - V(s) = 0 + 0.9*3 - 2 = 0.7`  
+**Update formulas (policy + value)**
+- Critic (state-value with TD error)  
+  `δ_t = r_t + γ * V_φ(s_{t+1}) - V_φ(s_t)`  
+  `φ ← φ + β * δ_t * ∇_φ V_φ(s_t)`
+- Actor (policy with advantage)  
+  `θ ← θ + α * ∇_θ log π_θ(a_t | s_t) * δ_t`
 
-Critic update:  
-`V(s) = 2 + 0.5*0.7 = 2.35`  
+**What each term means**
+- `V_φ(s)` — value function approximator with parameters `φ`
+- `δ_t` — TD error (how much better/worse the outcome was vs. expected)
+- `π_θ(a|s)` — policy (as above), `θ` its parameters
+- `α, β` — learning rates for actor and critic
+- Intuition: Critic learns to **predict** how good states are; Actor uses Critic’s `δ_t` as the **advantage** signal to push up good actions and push down bad ones.
 
-Actor update:  
-Since δ > 0, increase probability of choosing "Accelerate Left".  
+**✅ Example (one step to build momentum up the hill)**
+Assume:
+- Current state value `V(s) = 2.00`
+- Next state value `V(s') = 3.00`
+- Reward `r_t = 0`
+- `γ = 0.9`, Critic LR `β = 0.5`
+- Policy is logistic on action Right: `π(Right|s)=σ(θ)`, with current `θ = 0.0` → `σ(0)=0.5`
+- We took action **Right**; for logistic Bernoulli, `∇_θ log π(Right|s) = 1 - σ(θ) = 0.5`
+- Actor LR `α = 0.1`
 
-→ The agent learns that even though immediate reward is 0, this action helps reach the goal in the long run.
+Derivation (Critic):
+- `δ_t = r_t + γ * V(s') - V(s) = 0 + 0.9*3.00 - 2.00 = 2.70 - 2.00 = 0.70`
+- Critic update (simple scalar step shown):  
+  `V_new(s) = V(s) + β * δ_t = 2.00 + 0.5 * 0.70 = 2.35`
 
-### ✅ Summary
-- **Q-learning (FrozenLake):** off-policy, finds optimal values with future best actions.  
-- **SARSA (Cliff Walking):** on-policy, safer and more conservative updates.  
-- **Policy Gradient (CartPole):** directly improves action probabilities for continuous states.  
-- **Actor-Critic (MountainCar):** hybrid method combining value estimates and policy updates.
+Derivation (Actor):
+- `θ ← θ + α * (∇_θ log π(Right|s)) * δ_t`  
+  `= 0.0 + 0.1 * (0.5) * (0.70)`  
+  `= 0.035`
+- New `π_new(Right|s) = σ(0.035) ≈ 0.509`
+
+**Conclusion:** positive TD error (`δ_t > 0`) says “this was better than expected,” so the Critic raises the state value estimate and the Actor increases the probability of the taken action.
+
+### Summary Cheat Sheet
+- **Q-learning (off-policy):** bootstrap toward the *best* next action value using `max_a' Q(s',a')`.
+- **SARSA (on-policy):** bootstrap toward the value of the *actual* next action `Q(s', a_{t+1})` (safer near risks).
+- **Policy Gradient:** directly push up probabilities of actions that led to high returns.
+- **Actor-Critic:** use TD error as advantage to update the policy, while learning a value baseline for stability.
