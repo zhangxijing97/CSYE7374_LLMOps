@@ -389,3 +389,96 @@ Reuse logits: `[2.0, 0.5, -1.0]` → softmax `p ≈ [0.786, 0.175, 0.039]`.
 - If `y = 1` (true class is 1):  
   `WCE = - w_1 * log(p_1) = - 1.0 * log(0.786) ≈ 0.241`
 
+### Reinforcement Learning
+
+#### 1. Q-learning – FrozenLake
+Update rule:  
+`Q(s_t, a_t) ← Q(s_t, a_t) + α * ( r_t + γ * max_a' Q(s_{t+1}, a') - Q(s_t, a_t) )`
+
+- Learns the optimal value of each action independent of the current policy.  
+- Off-policy method.
+
+✅ Example (FrozenLake):  
+- State: on start tile  
+- Action: "Right"  
+- Reward: `r_t = 0` (normal step, not goal yet)  
+- Next state's best Q-value: `max Q(s’,·) = 5`  
+- Parameters: α = 0.5, γ = 0.9, current Q(s,Right)=0  
+
+Step-by-step:  
+`Q(s,Right) ← 0 + 0.5 * ( 0 + 0.9*5 - 0 )`  
+`Q(s,Right) = 2.25`  
+
+→ The agent increases its belief that going "Right" is promising because the future leads toward the goal.
+
+#### 2. SARSA – Cliff Walking
+Update rule:  
+`Q(s_t, a_t) ← Q(s_t, a_t) + α * ( r_t + γ * Q(s_{t+1}, a_{t+1}) - Q(s_t, a_t) )`
+
+- On-policy: uses the actual action taken in the next state.  
+- Produces safer policies.
+
+✅ Example (Cliff Walking):  
+- State: near cliff edge  
+- Action: "Right"  
+- Reward: `r_t = -1` (step penalty)  
+- Next action chosen: "Right" again, Q(s’,Right)=2  
+- Parameters: α=0.5, γ=0.9, current Q(s,Right)=0  
+
+Step-by-step:  
+`Q(s,Right) ← 0 + 0.5 * ( -1 + 0.9*2 - 0 )`  
+`Q(s,Right) = 0.4`  
+
+→ The update is cautious, reflecting actual path risk instead of assuming the absolute best action.
+
+#### 3. Policy Gradient – CartPole
+Update rule (REINFORCE):  
+`θ ← θ + α * ∇θ log πθ(a_t|s_t) * R_t`
+
+- Directly adjusts policy probabilities toward actions that yield higher rewards.  
+- Works well with continuous states.
+
+✅ Example (CartPole):  
+- State: pole leaning slightly right  
+- Policy: πθ(Left)=0.5, πθ(Right)=0.5  
+- Action: "Right"  
+- Reward: balancing longer, `R_t = +10`  
+- α = 0.1  
+
+Step-by-step:  
+`θ ← θ + 0.1 * ∇θ log(0.5) * 10`  
+
+→ Increases probability of "Right". Next time, the agent is more likely to push right to keep balance.
+
+#### 4. Actor-Critic – MountainCar
+Update rules:  
+- Critic (value function):  
+  `V(s_t) ← V(s_t) + β * ( r_t + γ * V(s_{t+1}) - V(s_t) )`  
+- Actor (policy):  
+  `θ ← θ + α * ∇θ log πθ(a_t|s_t) * δ`  
+
+where `δ` is the TD error.
+
+✅ Example (MountainCar):  
+- State: car stuck in valley  
+- Action: "Accelerate Left" (to build momentum)  
+- Reward: `r_t = 0` (no immediate success yet)  
+- Next state value: V(s’)=3.0, current V(s)=2.0  
+- γ=0.9, β=0.5  
+
+TD error:  
+`δ = r + γ*V(s’) - V(s) = 0 + 0.9*3 - 2 = 0.7`  
+
+Critic update:  
+`V(s) = 2 + 0.5*0.7 = 2.35`  
+
+Actor update:  
+Since δ > 0, increase probability of choosing "Accelerate Left".  
+
+→ The agent learns that even though immediate reward is 0, this action helps reach the goal in the long run.
+
+### ✅ Summary
+- **Q-learning (FrozenLake):** off-policy, finds optimal values with future best actions.  
+- **SARSA (Cliff Walking):** on-policy, safer and more conservative updates.  
+- **Policy Gradient (CartPole):** directly improves action probabilities for continuous states.  
+- **Actor-Critic (MountainCar):** hybrid method combining value estimates and policy updates.
