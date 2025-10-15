@@ -523,3 +523,4 @@ Derivation (Actor):
 - **SARSA (on-policy):** bootstrap toward the value of the *actual* next action `Q(s', a_{t+1})` (safer near risks).
 - **Policy Gradient:** directly push up probabilities of actions that led to high returns.
 - **Actor-Critic:** use TD error as advantage to update the policy, while learning a value baseline for stability.
+
