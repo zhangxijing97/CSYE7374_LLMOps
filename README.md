@@ -1,5 +1,13 @@
 # CSYE7374_LLMOps
 
+- [Deep Neural Network (DNN)](#deep-neural-network-dnn)
+- [Recurrent Neural Network (RNN)](#recurrent-neural-network-rnn)
+- [Long Short-Term Memory (LSTM)](#long-short-term-memory-lstm)
+- [Cross-Entropy (CE)](#cross-entropy-ce)
+- [Focal Loss](#focal-loss-softmax-multi-class)
+- [Weighted Cross-Entropy](#weighted-cross-entropy-softmax-multi-class)
+- [Reinforcement Learning](#reinforcement-learning)
+
 ### Deep Neural Network (DNN)
 
 #### 1. Forward Pass  
